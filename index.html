@@ -1,40 +1,73 @@
 <!DOCTYPE html>
 <html>
-<head><title>Chat DeepSeek</title>
+<head>
+<title>AI Chat</title>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <style>
-body{font-family:sans-serif;margin:0;background:#f0f0f0}
-#header{background:#1a73e8;color:white;padding:15px;text-align:center;font-size:20px}
-#messages{height:75vh;overflow-y:auto;padding:10px}
-.user{background:#1a73e8;color:white;padding:10px;border-radius:15px 15px 0 15px;margin:5px 0;max-width:80%;float:right;clear:both}
-.ai{background:white;padding:10px;border-radius:15px 15px 15px 0;margin:5px 0;max-width:80%;float:left;clear:both}
-#input-area{display:flex;padding:10px;background:white;position:fixed;bottom:0;width:100%;box-sizing:border-box}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:sans-serif;background:#f0f0f0;height:100vh;display:flex;flex-direction:column}
+#header{background:#075e54;color:white;padding:15px;text-align:center;font-size:18px}
+#messages{flex:1;overflow-y:auto;padding:10px;padding-bottom:80px}
+.user{background:#dcf8c6;padding:10px;border-radius:15px 15px 0 15px;margin:5px 0 5px auto;max-width:80%;width:fit-content}
+.ai{background:white;padding:10px;border-radius:15px 15px 15px 0;margin:5px 0;max-width:80%;width:fit-content}
+#input-area{display:flex;padding:10px;background:white;position:fixed;bottom:0;width:100%}
 #msg{flex:1;padding:10px;border:1px solid #ddd;border-radius:20px;outline:none}
-#send{background:#1a73e8;color:white;border:none;padding:10px 20px;border-radius:20px;margin-left:5px}
-</style></head>
+#send{background:#075e54;color:white;border:none;padding:10px 15px;border-radius:50%;margin-left:8px;width:45px;height:45px}
+#key-area{padding:10px;background:#fff3cd;text-align:center}
+#apikey{width:80%;padding:8px;border:1px solid #ddd;border-radius:8px}
+</style>
+</head>
 <body>
-<div id=header>🤖 Chat DeepSeek</div>
-<div id=messages></div>
+<div id=header>🤖 AI Chat - DeepSeek</div>
+<div id=key-area>
+<input id=apikey placeholder="Masukkan API Key OpenRouter">
+<button onclick="saveKey()" style="background:#075e54;color:white;border:none;padding:8px 12px;border-radius:8px;margin-left:5px">Simpan</button>
+</div>
+<div id=messages>
+<div class=ai>Halo! Masukkan API key dulu ya 😊</div>
+</div>
 <div id=input-area>
-<input id=msg placeholder="Ketik pesan..." onkeypress="if(event.key===Enter)send()">
-<button id=send onclick=send()>Kirim</button>
+<input id=msg placeholder="Ketik pesan..." onkeypress="if(event.key=='Enter')send()">
+<button id=send onclick=send()>➤</button>
 </div>
 <script>
-function send(){
-    var msg = document.getElementById("msg").value;
-    addMsg(msg, "user");
-    document.getElementById("msg").value = "";
-    addMsg("⏳ Mengetik...", "ai");
-    fetch("/chat", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message:msg})})
-    .then(r=>r.json()).then(d=>{
-        document.querySelector(".ai:last-child").innerHTML = d.reply;
-    });
+var API_KEY = localStorage.getItem("openrouter_key") || "";
+if(API_KEY) document.getElementById("key-area").style.display="none";
+
+function saveKey(){
+    API_KEY = document.getElementById("apikey").value;
+    localStorage.setItem("openrouter_key", API_KEY);
+    document.getElementById("key-area").style.display="none";
+    addMsg("API key tersimpan! Sekarang bisa chat 😊", "ai");
 }
+
 function addMsg(text, cls){
     var div = document.createElement("div");
     div.className = cls;
-    div.innerHTML = text;
+    div.innerText = text;
     document.getElementById("messages").appendChild(div);
+    document.getElementById("messages").scrollTop = 99999;
+}
+
+async function send(){
+    var msg = document.getElementById("msg").value.trim();
+    document.getElementById("msg").value = "";
+    addMsg(msg, "user");
+    addMsg("⏳ Mengetik...", "ai");
+    try {
+        var res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {"Authorization": "Bearer "+API_KEY, "Content-Type": "application/json"},
+            body: JSON.stringify({model: "deepseek/deepseek-chat:free", messages: [{role:"user",content:msg}]})
+        });
+        var data = await res.json();
+        var msgs = document.querySelectorAll(".ai");
+        msgs[msgs.length-1].innerText = data.choices[0].message.content;
+    } catch(e) {
+        var msgs = document.querySelectorAll(".ai");
+        msgs[msgs.length-1].innerText = "Error: "+e;
+    }
 }
 </script>
-</body></html>
+</body>
+</html>
